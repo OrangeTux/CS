@@ -42,6 +42,10 @@ class ChargePoint(OCPP16CentralSystemBase):
             current_time=datetime.utcnow().isoformat('T', 'seconds') + 'Z',
         )
 
+    @on(Action.MeterValues)
+    def on_meter_value(self, connector_id, meter_value, **kwargs):
+        return call_result.MeterValuesPayload()
+
     async def start(self):
         while True:
             message = await self.connection.receive()
