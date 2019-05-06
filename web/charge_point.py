@@ -3,12 +3,29 @@ from datetime import datetime
 from functools import partial
 from structlog import get_logger
 
-from ocpp import call_result
+from ocpp import call_result, call
 from ocpp.ocpp_16_enums import Action, RegistrationStatus
 from ocpp.ocpp_16_cs import on, OCPP16CentralSystemBase
 
 
 l = get_logger()
+
+
+def create_charging_profile(limit):
+    return {
+        'charging_profile_id': 1,
+        'transaction_id': 0,
+        'stack_level': 0,
+        'charging_profile_purpose': 'TxProfile',
+        'charging_profile_kind': 'Relative',
+        'charging_schedule': {
+            'charging_rate_unit': 'A',
+            'charging_schedule_period': [{
+                'start_period': 0,
+                'limit': limit,
+            }]
+        }
+    }
 
 
 class ChargePoint(OCPP16CentralSystemBase):
@@ -46,9 +63,14 @@ class ChargePoint(OCPP16CentralSystemBase):
     def on_meter_value(self, connector_id, meter_value, **kwargs):
         return call_result.MeterValuesPayload()
 
+    async def set_charge_limit(self, limit):
+        response = await self.call(call.SetChargingProfilePayload(
+            connector_id=0,
+            cs_charging_profiles=create_charging_profile(limit),
+        ))
+
     async def start(self):
         while True:
             message = await self.connection.receive()
             l.msg('Received message from CP', charger_id=self.id, message=message)
             asyncio.create_task(self.route_message(message))
-
