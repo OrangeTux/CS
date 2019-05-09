@@ -10,22 +10,7 @@ from web.charge_point import ChargePoint
 l = get_logger()
 
 users = []
-
-class CustomDict(dict):
-    def __setitem__(self, key, item):
-        l.debug("Setting value", dict=id(self), key=key,
-                value=item.connection.websocket)
-        dict.__setitem__(self, key, item)
-
-    def __getitem__(self, key):
-        v = dict.__getitem__(self, key)
-        l.debug("Getting value", dict=id(self), key=key,
-                value=v.connection.websocket)
-
-        return v
-
-
-charge_points = CustomDict()
+charge_points = {}
 
 queue = None
 
@@ -39,21 +24,6 @@ def get_queue():
 
 app = Quart(__name__)
 
-
-@app.route('/')
-async def get_index():
-    return await render_template('index.html')
-
-
-@app.route('/charge_point')
-async def get_charge_points():
-    return await render_template('charge_points.html',
-            charge_points=charge_points.items())
-
-
-@app.route('/charge_point/<string:charger_id>')
-async def get_charge_point(charger_id):
-    return await render_template('charge_point.html', charge_point=charge_points[charger_id])
 
 
 @app.websocket('/ws')
@@ -77,9 +47,6 @@ async def on_user_connect():
 
 @app.websocket('/<string:charger_id>')
 async def on_charge_point_connect(charger_id):
-    l.msg('Charge point connected', charger_id=charger_id,
-            websocket=websocket._get_current_object())
-
     cp = ChargePoint(charger_id, WebSocketProxy(charger_id,
         websocket._get_current_object(), get_queue()))
 
@@ -87,7 +54,7 @@ async def on_charge_point_connect(charger_id):
 
     await cp.start()
 
-    # del charge_points[charger_id]
+    del charge_points[charger_id]
     l.msg('Charge point disconnected', charger_id=charger_id)
 
 
