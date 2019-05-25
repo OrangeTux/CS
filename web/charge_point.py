@@ -3,13 +3,12 @@ from datetime import datetime
 from functools import partial
 from structlog import get_logger
 
-from ocpp import call_result, call
-from ocpp.ocpp_16_enums import Action, RegistrationStatus
-from ocpp.ocpp_16_cs import on, OCPP16CentralSystemBase
+from ocpp.routing import on
+from ocpp.v16 import ChargePoint as cp
+from ocpp.v16 import call_result, call
+from ocpp.v16.enums import Action, RegistrationStatus
 
-from web.duct_type import ChargePoint as cs
-
-l = get_logger()
+log = get_logger()
 
 
 def create_charging_profile(limit):
@@ -29,12 +28,12 @@ def create_charging_profile(limit):
     }
 
 
-class ChargePoint(cs):
+class ChargePoint(cp):
     def __init__(self, id, connection):
         self.id = id
         self.connection = connection
 
-        super().__init__(connection)
+        super().__init__(id, connection)
 
         self.model = None
         self.vendor = None
@@ -51,7 +50,7 @@ class ChargePoint(cs):
         return call_result.BootNotificationPayload(
             current_time=datetime.utcnow().isoformat('T', 'seconds') + 'Z',
             interval=1,
-            status=RegistrationStatus.Accepted
+            status=RegistrationStatus.accepted
         )
 
     @on(Action.Heartbeat)
@@ -69,3 +68,9 @@ class ChargePoint(cs):
             connector_id=0,
             cs_charging_profiles=create_charging_profile(limit),
         ))
+
+    # async def start(self):
+        # while True:
+            # message = await self.connection.receive()
+            # log.info("Message received", msg=message)
+            # asyncio.create_task(self.route_message(message))

@@ -30,13 +30,6 @@ app = Quart(__name__)
 async def on_user_connect():
     l.msg('User connected')
     users.append(websocket)
-
-    for charger_id, cp in charge_points.items():
-        await websocket.send(json.dumps({
-            'chargePointId': charger_id,
-            'message': json.dumps({'action': 'online'}),
-        }))
-
     task = asyncio.create_task(listen(websocket))
     while True:
         msg = await get_queue().get()
@@ -76,7 +69,7 @@ class WebSocketProxy:
         self.websocket = websocket
         self.queue = queue
 
-    async def async_send(self, msg):
+    async def send(self, msg):
         self.queue.put_nowait(json.dumps({
             'chargePointId': self.charger_id,
             'message': msg
@@ -84,9 +77,11 @@ class WebSocketProxy:
         await self.websocket.send(msg)
 
 
-    async def receive(self):
+    async def recv(self):
         msg = await self.websocket.receive()
+
         l.info("Receive message from CP", proxy=self, websocket=websocket, msg=msg)
+
         self.queue.put_nowait(json.dumps({
             'chargePointId': self.charger_id,
             'message': msg
